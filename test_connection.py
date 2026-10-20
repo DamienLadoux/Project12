@@ -19,9 +19,9 @@ engine = create_engine(url)
 
 try:
     with engine.connect() as connection:
-        result = connection.execute(text("SELECT version()"))
-        print("Connexion réussie !")
-        print(result.scalar())
+       result = connection.execute(text("SELECT version()"))
+       print("Connexion réussie !")
+       print(result.scalar())
 except Exception as error:
     print(f"Échec de la connexion : {error}")
 finally:
