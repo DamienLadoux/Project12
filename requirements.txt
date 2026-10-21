@@ -2,7 +2,7 @@ argon2-cffi==25.1.0
 psycopg==3.2.13
 psycopg-binary==3.2.13
 pytest==9.1.1
-python-dotenv==1.0.1
+python-dotenv==1.2.2
 SQLAlchemy==2.0.54
 typing_extensions==4.13.2
 tzdata==2026.5
