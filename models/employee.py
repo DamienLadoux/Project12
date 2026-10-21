@@ -36,6 +36,14 @@ class Employee(Base):
         nullable=False,
     )
 
+    clients: Mapped[list["Client"]] = relationship(
+        back_populates="commercial"
+    )
+
+    supported_events: Mapped[list["Event"]] = relationship(
+        back_populates="support"
+    )
+
     role: Mapped["Role"] = relationship(
         back_populates="employees"
     )
