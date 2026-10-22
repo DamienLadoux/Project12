@@ -1,8 +1,10 @@
 argon2-cffi==25.1.0
+coverage==7.16.2
 psycopg==3.2.13
 psycopg-binary==3.2.13
 PyJWT==2.15.1
 pytest==9.1.1
+pytest-cov==7.1.0
 python-dotenv==1.2.2
 rich==14.2.0
 sentry-sdk==2.72.0

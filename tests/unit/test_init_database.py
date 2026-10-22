@@ -20,6 +20,7 @@ def test_database_already_exists_does_not_create_it(
     monkeypatch.setenv("ADMIN_DB_USER", "admin")
     monkeypatch.setenv("ADMIN_DB_PASSWORD", "test_password")
     monkeypatch.setenv("DB_NAME", "epic_events")
+    monkeypatch.setenv("DB_USER", "epic_events_user")
     monkeypatch.setenv("DB_HOST", "localhost")
     monkeypatch.setenv("DB_PORT", "5432")
 
@@ -48,6 +49,7 @@ def test_missing_admin_password_raises_error(mock_load_dotenv, monkeypatch):
     monkeypatch.setenv("ADMIN_DB_USER", "admin")
     monkeypatch.delenv("ADMIN_DB_PASSWORD", raising=False)
     monkeypatch.setenv("DB_NAME", "epic_events")
+    monkeypatch.setenv("DB_USER", "epic_events_user")
 
     with pytest.raises(ValueError, match="ADMIN_DB_PASSWORD"):
         init_database.main()
@@ -63,6 +65,37 @@ def test_admin_database_cannot_be_target_database(
     monkeypatch.setenv("ADMIN_DB_USER", "admin")
     monkeypatch.setenv("ADMIN_DB_PASSWORD", "test_password")
     monkeypatch.setenv("DB_NAME", "epic_events")
+    monkeypatch.setenv("DB_USER", "epic_events_user")
 
     with pytest.raises(ValueError, match="différente"):
         init_database.main()
+
+
+@patch("init_database.create_engine")
+@patch("init_database.load_dotenv")
+def test_database_is_created_for_nonprivileged_application_user(
+    mock_load_dotenv,
+    mock_create_engine,
+    monkeypatch,
+):
+    """La base neuve appartient au compte utilisé par l'application."""
+    monkeypatch.setenv("ADMIN_DB_NAME", "postgres")
+    monkeypatch.setenv("ADMIN_DB_USER", "postgres")
+    monkeypatch.setenv("ADMIN_DB_PASSWORD", "admin-password")
+    monkeypatch.setenv("DB_NAME", "epic_events")
+    monkeypatch.setenv("DB_USER", "epic_events_user")
+    connection = MagicMock()
+    connection.execute.return_value.scalar_one_or_none.return_value = None
+    connection.dialect.identifier_preparer.quote.side_effect = (
+        lambda identifier: identifier
+    )
+    engine = MagicMock()
+    engine.connect.return_value.__enter__.return_value = connection
+    mock_create_engine.return_value = engine
+
+    init_database.main()
+
+    connection.exec_driver_sql.assert_called_once_with(
+        'CREATE DATABASE epic_events OWNER epic_events_user'
+    )
+    engine.dispose.assert_called_once_with()

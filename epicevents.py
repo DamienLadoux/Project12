@@ -23,6 +23,8 @@ from database import create_database_engine
 from models import Client, Contract, Employee, Event
 from monitoring import (
     capture_contract_signature,
+    capture_employee_created,
+    capture_employee_updated,
     capture_login,
     configure_monitoring,
     set_actor_context,
@@ -61,6 +63,7 @@ from services.query_service import (
 
 
 AUTHENTICATION_COMMANDS = frozenset({"login", "logout", "whoami"})
+AuditEvent = tuple[str, Employee | Contract]
 
 
 class EntityNotFoundError(ValueError):
@@ -410,7 +413,7 @@ def _dispatch_employee_command(
     session: Session,
     actor: Employee,
     arguments: argparse.Namespace,
-) -> None:
+) -> AuditEvent | None:
     if arguments.action == "list":
         display_employees(list_employees(session, actor))
     elif arguments.action == "create":
@@ -427,6 +430,7 @@ def _dispatch_employee_command(
         print_success(
             f"Collaborateur créé avec l'identifiant {employee.id}."
         )
+        return "employee.created", employee
     elif arguments.action == "update":
         employee = _get_entity(
             session,
@@ -447,6 +451,7 @@ def _dispatch_employee_command(
             changes["password"] = getpass.getpass("Nouveau mot de passe : ")
         update_employee(session, actor, employee, **changes)
         print_success("Collaborateur modifié.")
+        return "employee.updated", employee
     elif arguments.action == "delete":
         employee = _get_entity(
             session,
@@ -456,6 +461,8 @@ def _dispatch_employee_command(
         )
         delete_employee(session, actor, employee)
         print_success("Collaborateur supprimé.")
+
+    return None
 
 
 def _dispatch_client_command(
@@ -501,7 +508,7 @@ def _dispatch_contract_command(
     session: Session,
     actor: Employee,
     arguments: argparse.Namespace,
-) -> Contract | None:
+) -> AuditEvent | None:
     if arguments.action == "list":
         contracts = list_contracts(
             session,
@@ -528,7 +535,7 @@ def _dispatch_contract_command(
         )
         print_success(f"Contrat créé avec l'identifiant {contract.id}.")
         if contract.is_signed:
-            return contract
+            return "contract.signed", contract
     elif arguments.action == "update":
         contract = _get_entity(
             session,
@@ -555,7 +562,7 @@ def _dispatch_contract_command(
         update_contract(session, actor, contract, **changes)
         print_success("Contrat modifié.")
         if not was_signed and contract.is_signed:
-            return contract
+            return "contract.signed", contract
 
     return None
 
@@ -644,10 +651,10 @@ def _dispatch_business_command(
     session: Session,
     actor: Employee,
     arguments: argparse.Namespace,
-) -> Contract | None:
+) -> AuditEvent | None:
     """Route une commande analysée vers le service métier correspondant."""
     if arguments.command == "employees":
-        _dispatch_employee_command(session, actor, arguments)
+        return _dispatch_employee_command(session, actor, arguments)
     elif arguments.command == "clients":
         _dispatch_client_command(session, actor, arguments)
     elif arguments.command == "contracts":
@@ -656,6 +663,20 @@ def _dispatch_business_command(
         _dispatch_event_command(session, actor, arguments)
 
     return None
+
+
+def _capture_audit_event(
+    actor: Employee,
+    audit_event: AuditEvent,
+) -> None:
+    """Envoie un événement métier une fois la transaction validée."""
+    event_name, entity = audit_event
+    if event_name == "employee.created":
+        capture_employee_created(actor, entity)
+    elif event_name == "employee.updated":
+        capture_employee_updated(actor, entity)
+    elif event_name == "contract.signed":
+        capture_contract_signature(actor, entity)
 
 
 def _run_login(identifier: str | None) -> None:
@@ -700,17 +721,17 @@ def _run_business_command(arguments: argparse.Namespace) -> None:
     engine = create_database_engine()
     try:
         with Session(engine) as session:
-            signed_contract = None
+            audit_event = None
             with session.begin():
                 actor = get_current_actor(session, _jwt_secret())
                 set_actor_context(actor)
-                signed_contract = _dispatch_business_command(
+                audit_event = _dispatch_business_command(
                     session,
                     actor,
                     arguments,
                 )
-            if signed_contract is not None:
-                capture_contract_signature(actor, signed_contract)
+            if audit_event is not None:
+                _capture_audit_event(actor, audit_event)
     finally:
         engine.dispose()
 

@@ -18,8 +18,9 @@ octets et ne doit jamais être enregistré dans Git.
 
 La supervision Sentry est facultative en développement. Pour l'activer,
 renseigner `SENTRY_DSN` et, si nécessaire, `SENTRY_ENVIRONMENT` dans `.env`.
-L'application envoie les erreurs techniques non gérées ainsi que deux
-événements d'audit : les connexions réussies et les signatures de contrat.
+L'application envoie les erreurs techniques non gérées ainsi que les
+événements d'audit suivants : connexions réussies, créations ou modifications
+de collaborateurs et signatures de contrat.
 Seuls les identifiants techniques et le rôle du collaborateur sont associés
 à ces événements ; les mots de passe et données personnelles sont exclus.
 
@@ -28,6 +29,33 @@ Installer les dépendances :
 ```powershell
 python -m pip install -r requirements.txt
 ```
+
+## Initialisation de PostgreSQL
+
+Créer d'abord un compte PostgreSQL non privilégié réservé à l'application,
+par exemple avec pgAdmin ou la commande SQL suivante exécutée par un
+administrateur :
+
+```sql
+CREATE ROLE epic_events_user LOGIN PASSWORD 'mot_de_passe_a_remplacer';
+```
+
+Renseigner dans `.env` les variables `ADMIN_DB_*` du compte autorisé à créer
+une base, puis les variables `DB_*` du compte applicatif. Créer ensuite la
+base, son schéma et le premier compte du département gestion :
+
+```powershell
+python init_database.py
+python create_schema.py
+python bootstrap.py
+```
+
+`init_database.py` crée la base avec `DB_USER` comme propriétaire. Si la base
+existe déjà, il faut vérifier manuellement que ce compte dispose des droits
+sur la base et le schéma `public`. `bootstrap.py` crée les rôles `GESTION`,
+`COMMERCIAL` et `SUPPORT`, puis demande interactivement les informations du
+premier gestionnaire. Par sécurité, ce script refuse de créer un compte dès
+qu'un collaborateur existe déjà.
 
 ## Interface en ligne de commande
 
@@ -86,6 +114,12 @@ Tests unitaires rapides, sans PostgreSQL ni stockage persistant :
 
 ```powershell
 python -m pytest tests/unit -q
+```
+
+Mesurer la couverture des tests :
+
+```powershell
+python -m pytest --cov=. --cov-report=term-missing -q
 ```
 
 Tests d'intégration avec PostgreSQL ou le système de fichiers :

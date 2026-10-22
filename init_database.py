@@ -15,6 +15,7 @@ def main():
     admin_db_user = os.getenv("ADMIN_DB_USER")
     admin_db_password = os.getenv("ADMIN_DB_PASSWORD")
     db_name = os.getenv("DB_NAME")
+    db_user = os.getenv("DB_USER")
     db_host = os.getenv("DB_HOST", "localhost")
     db_port = int(os.getenv("DB_PORT", "5432"))
 
@@ -23,6 +24,7 @@ def main():
         "ADMIN_DB_USER": admin_db_user,
         "ADMIN_DB_PASSWORD": admin_db_password,
         "DB_NAME": db_name,
+        "DB_USER": db_user,
     }
 
     missing_values = [
@@ -71,9 +73,12 @@ def main():
             quoted_db_name = (
                 connection.dialect.identifier_preparer.quote(db_name)
             )
+            quoted_db_user = (
+                connection.dialect.identifier_preparer.quote(db_user)
+            )
 
             connection.exec_driver_sql(
-                f"CREATE DATABASE {quoted_db_name}"
+                f"CREATE DATABASE {quoted_db_name} OWNER {quoted_db_user}"
             )
 
             print(f"Base '{db_name}' créée avec succès.")
