@@ -2,7 +2,6 @@
 
 from models import Client, Employee
 
-
 MANAGEMENT_ROLE = "GESTION"
 COMMERCIAL_ROLE = "COMMERCIAL"
 SUPPORT_ROLE = "SUPPORT"

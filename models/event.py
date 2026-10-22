@@ -2,11 +2,16 @@
 """Modèle SQLAlchemy représentant les événements."""
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.base import Base
+
+if TYPE_CHECKING:
+    from models.contract import Contract
+    from models.employee import Employee
 
 
 class Event(Base):

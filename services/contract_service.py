@@ -8,7 +8,6 @@ from models import Client, Contract, Employee
 from services.authorization import AuthorizationError, can_manage_contracts
 from services.validators import nonnegative_decimal
 
-
 _UNSET = object()
 
 

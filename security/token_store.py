@@ -4,7 +4,6 @@ import os
 import tempfile
 from pathlib import Path
 
-
 TOKEN_FILE_ENVIRONMENT_VARIABLE = "EPIC_EVENTS_TOKEN_FILE"
 
 

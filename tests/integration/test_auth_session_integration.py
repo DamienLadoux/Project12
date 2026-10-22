@@ -15,7 +15,6 @@ from services.auth_session import (
     login,
 )
 
-
 SECRET = "a_secure_test_secret_with_32_bytes_minimum"
 
 

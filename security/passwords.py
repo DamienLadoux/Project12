@@ -3,7 +3,6 @@
 from argon2 import PasswordHasher
 from argon2.exceptions import InvalidHashError, VerificationError
 
-
 _PASSWORD_HASHER = PasswordHasher(
     time_cost=2,
     memory_cost=19456,

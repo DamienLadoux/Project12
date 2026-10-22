@@ -5,9 +5,9 @@ from sqlalchemy.orm import Session, selectinload
 
 from models import Client, Contract, Employee, Event
 from services.authorization import (
-    AuthorizationError,
     COMMERCIAL_ROLE,
     SUPPORT_ROLE,
+    AuthorizationError,
     can_manage_employees,
     has_role,
     is_authenticated,

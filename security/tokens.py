@@ -5,7 +5,6 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from jwt.exceptions import InvalidTokenError as JWTInvalidTokenError
 
-
 JWT_ALGORITHM = "HS256"
 JWT_ISSUER = "epic-events"
 DEFAULT_TOKEN_LIFETIME = timedelta(hours=8)

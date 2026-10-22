@@ -21,7 +21,6 @@ from services.event_service import (
     update_event,
 )
 
-
 load_dotenv()
 
 

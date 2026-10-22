@@ -12,7 +12,6 @@ from services.authorization import (
 )
 from services.validators import normalize_email, optional_text, required_text
 
-
 _UNSET = object()
 
 

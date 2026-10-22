@@ -12,7 +12,6 @@ from security.tokens import (
     decode_access_token,
 )
 
-
 SECRET = "a_secure_test_secret_with_32_bytes_minimum"
 OTHER_SECRET = "another_secure_secret_with_32_bytes_minimum"
 

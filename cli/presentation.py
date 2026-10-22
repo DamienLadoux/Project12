@@ -9,7 +9,6 @@ from rich.text import Text
 
 from models import Client, Contract, Employee, Event
 
-
 console = Console()
 error_console = Console(stderr=True)
 

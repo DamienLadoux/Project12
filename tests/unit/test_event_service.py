@@ -1,7 +1,6 @@
 """Tests unitaires du service de gestion des événements."""
 
 from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -15,7 +14,6 @@ from services.event_service import (
     create_event,
     update_event,
 )
-
 
 START = datetime(2026, 11, 1, 9, 0, tzinfo=timezone.utc)
 END = START + timedelta(hours=8)

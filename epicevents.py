@@ -61,7 +61,6 @@ from services.query_service import (
     list_events,
 )
 
-
 AUTHENTICATION_COMMANDS = frozenset({"login", "logout", "whoami"})
 AuditEvent = tuple[str, Employee | Contract]
 

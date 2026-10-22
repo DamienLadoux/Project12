@@ -7,7 +7,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 import bootstrap
-from models import Base, Employee, Role
+from models import Base, Role
 from security.passwords import verify_password
 
 

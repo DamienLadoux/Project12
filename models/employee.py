@@ -1,10 +1,17 @@
 
 """Modèle SQLAlchemy représentant les collaborateurs."""
 
+from typing import TYPE_CHECKING
+
 from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from models.base import Base
+
+if TYPE_CHECKING:
+    from models.client import Client
+    from models.event import Event
+    from models.role import Role
 
 
 class Employee(Base):

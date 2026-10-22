@@ -20,7 +20,6 @@ from epicevents import (
     build_parser,
     main,
 )
-from models import Client
 
 
 def parse(*arguments: str):

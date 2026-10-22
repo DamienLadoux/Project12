@@ -2,12 +2,14 @@
 """Test d'intégration de la contrainte d'unicité des rôles."""
 
 import os
+
 import pytest
+from dotenv import load_dotenv
 from sqlalchemy import URL, create_engine
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from models import Base, Role
-from dotenv import load_dotenv
+
+from models import Role
 
 load_dotenv()
 

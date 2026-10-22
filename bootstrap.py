@@ -17,7 +17,6 @@ from services.authorization import (
 )
 from services.validators import normalize_email, required_text
 
-
 ROLE_NAMES = (MANAGEMENT_ROLE, COMMERCIAL_ROLE, SUPPORT_ROLE)
 
 

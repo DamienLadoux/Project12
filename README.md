@@ -122,6 +122,12 @@ Mesurer la couverture des tests :
 python -m pytest --cov=. --cov-report=term-missing -q
 ```
 
+Contrôler la qualité et le style Python :
+
+```powershell
+python -m ruff check .
+```
+
 Tests d'intégration avec PostgreSQL ou le système de fichiers :
 
 ```powershell

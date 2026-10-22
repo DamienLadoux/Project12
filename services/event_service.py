@@ -6,15 +6,14 @@ from sqlalchemy.orm import Session
 
 from models import Contract, Employee, Event
 from services.authorization import (
-    AuthorizationError,
     SUPPORT_ROLE,
+    AuthorizationError,
     can_assign_event_support,
     can_create_event,
     can_update_event,
     has_role,
 )
 from services.validators import optional_text, required_text
-
 
 _UNSET = object()
 
