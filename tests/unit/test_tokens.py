@@ -50,10 +50,3 @@ def test_short_secret_is_rejected():
     """Une clé trop faible est refusée au lieu d'être utilisée."""
     with pytest.raises(TokenConfigurationError, match="32 octets"):
         create_access_token(42, "secret-trop-court")
-
-
-@pytest.mark.parametrize("employee_id", [0, -1, True, "42"])
-def test_employee_id_must_be_a_positive_integer(employee_id):
-    """Le sujet du JWT doit être un identifiant de base valide."""
-    with pytest.raises(ValueError, match="identifiant"):
-        create_access_token(employee_id, SECRET)

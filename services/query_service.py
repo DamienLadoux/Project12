@@ -8,6 +8,7 @@ from services.authorization import (
     AuthorizationError,
     COMMERCIAL_ROLE,
     SUPPORT_ROLE,
+    can_manage_employees,
     has_role,
     is_authenticated,
 )
@@ -31,6 +32,25 @@ def _actor_id(actor: Employee) -> int:
         )
 
     return actor.id
+
+
+def list_employees(
+    session: Session,
+    actor: Employee | None,
+) -> list[Employee]:
+    """Liste les collaborateurs pour le seul département gestion."""
+    authenticated_actor = _require_authenticated(actor)
+    if not can_manage_employees(authenticated_actor):
+        raise AuthorizationError(
+            "Seul le département gestion peut consulter les collaborateurs."
+        )
+
+    statement = (
+        select(Employee)
+        .options(selectinload(Employee.role))
+        .order_by(Employee.id)
+    )
+    return list(session.scalars(statement).all())
 
 
 def list_clients(

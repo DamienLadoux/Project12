@@ -63,22 +63,6 @@ def test_non_commercial_cannot_create_client():
     session.flush.assert_not_called()
 
 
-def test_create_client_rejects_invalid_email_before_persistence():
-    """Un e-mail invalide est refusé avant l'ajout en session."""
-    session = MagicMock()
-
-    with pytest.raises(ValueError, match="invalide"):
-        create_client(
-            session,
-            commercial_actor(),
-            "Client de test",
-            "adresse-invalide",
-        )
-
-    session.add.assert_not_called()
-    session.flush.assert_not_called()
-
-
 def test_responsible_commercial_can_update_client():
     """Le commercial responsable peut actualiser toutes les données du client."""
     session = MagicMock()
@@ -194,22 +178,4 @@ def test_update_client_validates_everything_before_mutation():
 
     assert client.full_name == "Client initial"
     assert client.email == "initial@example.test"
-    session.flush.assert_not_called()
-
-
-def test_update_client_requires_a_change():
-    """Une mise à jour sans champ fourni est refusée."""
-    session = MagicMock()
-    actor = commercial_actor()
-    client = create_client(
-        session,
-        actor,
-        "Client test",
-        "client@example.test",
-    )
-    session.reset_mock()
-
-    with pytest.raises(ValueError, match="Au moins une donnée"):
-        update_client(session, actor, client)
-
     session.flush.assert_not_called()

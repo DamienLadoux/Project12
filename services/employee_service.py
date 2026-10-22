@@ -74,6 +74,7 @@ def update_employee(
     actor: Employee | None,
     employee: Employee,
     *,
+    employee_number: str | None = None,
     full_name: str | None = None,
     email: str | None = None,
     password: str | None = None,
@@ -81,27 +82,38 @@ def update_employee(
 ) -> Employee:
     """Met à jour les données administratives d'un collaborateur.
 
-    Le numéro d'employé reste inchangé : il constitue l'identifiant
-    professionnel unique du collaborateur. Seuls les champs explicitement
-    fournis sont modifiés.
+    Seuls les champs explicitement fournis sont modifiés.
     """
     if not can_manage_employees(actor):
         raise AuthorizationError(
             "Seul le département gestion peut modifier un collaborateur."
         )
 
-    if all(value is None for value in (full_name, email, password, role_name)):
+    if all(
+        value is None
+        for value in (
+            employee_number,
+            full_name,
+            email,
+            password,
+            role_name,
+        )
+    ):
         raise ValueError("Au moins une donnée doit être fournie.")
 
+    changes: dict[str, object] = {}
+    if employee_number is not None:
+        changes["employee_number"] = required_text(
+            employee_number,
+            "Le numéro d'employé est obligatoire.",
+        )
     if full_name is not None:
-        employee.full_name = required_text(
+        changes["full_name"] = required_text(
             full_name,
             "Le nom complet est obligatoire.",
         )
     if email is not None:
-        employee.email = normalize_email(email)
-    if password is not None:
-        employee.password_hash = hash_password(password)
+        changes["email"] = normalize_email(email)
     if role_name is not None:
         normalized_role_name = required_text(
             role_name,
@@ -112,7 +124,12 @@ def update_employee(
         )
         if role is None:
             raise UnknownRoleError("Le rôle demandé n'existe pas.")
-        employee.role = role
+        changes["role"] = role
+    if password is not None:
+        changes["password_hash"] = hash_password(password)
+
+    for field_name, value in changes.items():
+        setattr(employee, field_name, value)
 
     session.flush()
     return employee

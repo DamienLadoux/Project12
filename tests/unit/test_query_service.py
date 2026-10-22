@@ -6,7 +6,12 @@ from unittest.mock import MagicMock
 import pytest
 
 from services.authorization import AuthorizationError
-from services.query_service import list_clients, list_contracts, list_events
+from services.query_service import (
+    list_clients,
+    list_contracts,
+    list_employees,
+    list_events,
+)
 
 
 def persisted_actor(role_name: str, actor_id: int = 7):
@@ -48,6 +53,27 @@ def test_authenticated_actor_can_list_all_clients():
     assert clients == expected_clients
     statement = session.scalars.call_args.args[0]
     assert statement.whereclause is None
+
+
+def test_management_can_list_employees():
+    """La gestion peut consulter les comptes et leurs rôles."""
+    expected_employees = [object()]
+    session = session_returning(*expected_employees)
+
+    employees = list_employees(session, persisted_actor("GESTION"))
+
+    assert employees == expected_employees
+    session.scalars.assert_called_once()
+
+
+def test_non_management_cannot_list_employees():
+    """Les collaborateurs ne peuvent pas consulter la liste des comptes."""
+    session = MagicMock()
+
+    with pytest.raises(AuthorizationError, match="gestion"):
+        list_employees(session, persisted_actor("COMMERCIAL"))
+
+    session.scalars.assert_not_called()
 
 
 def test_commercial_can_filter_owned_clients():

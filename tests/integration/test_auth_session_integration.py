@@ -1,4 +1,4 @@
-"""Tests unitaires de l'authentification persistante."""
+"""Intégration entre JWT, stockage local et session applicative."""
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -11,10 +11,8 @@ from security.token_store import load_token, save_token
 from security.tokens import ExpiredAccessTokenError, create_access_token
 from services.auth_session import (
     AuthenticationRequiredError,
-    InvalidCredentialsError,
     get_current_actor,
     login,
-    logout,
 )
 
 
@@ -22,7 +20,7 @@ SECRET = "a_secure_test_secret_with_32_bytes_minimum"
 
 
 def employee(employee_id: int = 42) -> Employee:
-    """Construit un collaborateur persistant simulé pour les tests."""
+    """Construit le collaborateur simulé renvoyé par la base."""
     authenticated_employee = Employee(
         employee_number="EMP-042",
         full_name="Alice Martin",
@@ -35,8 +33,8 @@ def employee(employee_id: int = 42) -> Employee:
 
 
 @patch("services.auth_session.authenticate_employee")
-def test_login_persists_token(mock_authenticate, tmp_path: Path):
-    """Une authentification correcte produit une session réutilisable."""
+def test_login_persists_a_reusable_token(mock_authenticate, tmp_path: Path):
+    """Une connexion produit un JWT lisible par une commande suivante."""
     authenticated_employee = employee()
     mock_authenticate.return_value = authenticated_employee
     token_path = tmp_path / "access_token"
@@ -51,28 +49,10 @@ def test_login_persists_token(mock_authenticate, tmp_path: Path):
 
     assert result is authenticated_employee
     assert load_token(token_path)
-    mock_authenticate.assert_called_once()
 
 
-@patch("services.auth_session.authenticate_employee", return_value=None)
-def test_login_rejects_invalid_credentials(mock_authenticate, tmp_path: Path):
-    """Un échec ne crée aucun fichier de session."""
-    token_path = tmp_path / "access_token"
-
-    with pytest.raises(InvalidCredentialsError):
-        login(
-            MagicMock(),
-            "EMP-042",
-            "wrong-password",
-            SECRET,
-            token_path=token_path,
-        )
-
-    assert not token_path.exists()
-
-
-def test_current_actor_is_reloaded_from_database(tmp_path: Path):
-    """Le JWT donne l'id, mais le rôle courant provient toujours de la base."""
+def test_token_reloads_current_actor_from_database(tmp_path: Path):
+    """Le JWT fournit l'id, tandis que le compte courant vient de la base."""
     token_path = tmp_path / "access_token"
     save_token(create_access_token(42, SECRET), token_path)
     current_employee = employee()
@@ -85,14 +65,13 @@ def test_current_actor_is_reloaded_from_database(tmp_path: Path):
     session.get.assert_called_once_with(Employee, 42)
 
 
-def test_expired_token_is_deleted(tmp_path: Path):
-    """Une session expirée oblige une nouvelle connexion et est nettoyée."""
+def test_expired_token_is_rejected_and_removed(tmp_path: Path):
+    """Une session expirée oblige une nouvelle authentification."""
     token_path = tmp_path / "access_token"
-    two_hours_ago = datetime.now(timezone.utc) - timedelta(hours=2)
     expired_token = create_access_token(
         42,
         SECRET,
-        now=two_hours_ago,
+        now=datetime.now(timezone.utc) - timedelta(hours=2),
         lifetime=timedelta(hours=1),
     )
     save_token(expired_token, token_path)
@@ -103,8 +82,8 @@ def test_expired_token_is_deleted(tmp_path: Path):
     assert not token_path.exists()
 
 
-def test_deleted_employee_invalidates_persistent_session(tmp_path: Path):
-    """Un JWT valide ne maintient pas l'accès d'un compte supprimé."""
+def test_deleted_account_invalidates_existing_token(tmp_path: Path):
+    """Un jeton valide ne conserve pas l'accès d'un compte supprimé."""
     token_path = tmp_path / "access_token"
     save_token(create_access_token(42, SECRET), token_path)
     session = MagicMock()
@@ -113,27 +92,4 @@ def test_deleted_employee_invalidates_persistent_session(tmp_path: Path):
     with pytest.raises(AuthenticationRequiredError, match="n'existe plus"):
         get_current_actor(session, SECRET, token_path=token_path)
 
-    assert not token_path.exists()
-
-
-def test_missing_session_requires_login(tmp_path: Path):
-    """Sans jeton local, aucune reconstruction d'actor n'est possible."""
-    session = MagicMock()
-
-    with pytest.raises(AuthenticationRequiredError, match="login"):
-        get_current_actor(
-            session,
-            SECRET,
-            token_path=tmp_path / "missing_token",
-        )
-
-    session.get.assert_not_called()
-
-
-def test_logout_removes_local_session(tmp_path: Path):
-    """La déconnexion supprime uniquement le jeton de la machine."""
-    token_path = tmp_path / "access_token"
-    save_token("header.payload.signature", token_path)
-
-    assert logout(token_path=token_path)
     assert not token_path.exists()

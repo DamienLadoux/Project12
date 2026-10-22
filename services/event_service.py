@@ -117,7 +117,7 @@ def assign_event_support(
     event: Event,
     support: Employee | None,
 ) -> Event:
-    """Affecte ou retire un collaborateur support, sur décision de la gestion."""
+    """Affecte ou retire un support, sur décision de la gestion."""
     if not can_assign_event_support(actor):
         raise AuthorizationError(
             "Seul le département gestion peut affecter le support."
@@ -137,6 +137,7 @@ def update_event(
     actor: Employee | None,
     event: Event,
     *,
+    contract: Contract | object = _UNSET,
     name: str | object = _UNSET,
     start_date: datetime | object = _UNSET,
     end_date: datetime | object = _UNSET,
@@ -150,7 +151,15 @@ def update_event(
             "Seul le support affecté peut modifier cet événement."
         )
 
-    values = (name, start_date, end_date, location, attendees, notes)
+    values = (
+        contract,
+        name,
+        start_date,
+        end_date,
+        location,
+        attendees,
+        notes,
+    )
     if all(value is _UNSET for value in values):
         raise ValueError("Au moins une donnée doit être fournie.")
 
@@ -180,6 +189,16 @@ def update_event(
         changes["attendees"] = _validated_attendees(attendees)
     if notes is not _UNSET:
         changes["notes"] = optional_text(notes)
+    if contract is not _UNSET:
+        if not isinstance(contract, Contract):
+            raise ValueError(
+                "Le contrat associé à l'événement est invalide."
+            )
+        if not contract.is_signed:
+            raise UnsignedContractError(
+                "Un événement exige un contrat signé."
+            )
+        changes["contract"] = contract
 
     for field_name, value in changes.items():
         setattr(event, field_name, value)

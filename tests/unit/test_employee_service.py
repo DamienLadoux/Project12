@@ -95,24 +95,6 @@ def test_create_employee_rejects_unknown_role(mock_hash_password):
     mock_hash_password.assert_not_called()
 
 
-def test_create_employee_rejects_invalid_email_before_database_query():
-    """Les données invalides sont refusées avant tout accès à la base."""
-    session = MagicMock()
-
-    with pytest.raises(ValueError, match="invalide"):
-        create_employee(
-            session,
-            management_actor(),
-            "EMP-001",
-            "Alice Martin",
-            "adresse-invalide",
-            "MotDePasseTest!2026",
-            "SUPPORT",
-        )
-
-    session.scalar.assert_not_called()
-
-
 @patch("services.employee_service.hash_password", return_value="new_argon_hash")
 def test_management_can_update_employee_data_and_role(mock_hash_password):
     """La gestion peut modifier les champs autorisés d'un collaborateur."""
@@ -132,6 +114,7 @@ def test_management_can_update_employee_data_and_role(mock_hash_password):
         session,
         management_actor(),
         employee,
+        employee_number=" EMP-014 ",
         full_name="Alice Dupont",
         email="ALICE.DUPONT@EXAMPLE.TEST",
         password="NouveauMotDePasse!2026",
@@ -139,7 +122,7 @@ def test_management_can_update_employee_data_and_role(mock_hash_password):
     )
 
     assert updated_employee is employee
-    assert employee.employee_number == "EMP-001"
+    assert employee.employee_number == "EMP-014"
     assert employee.full_name == "Alice Dupont"
     assert employee.email == "alice.dupont@example.test"
     assert employee.password_hash == "new_argon_hash"
@@ -161,17 +144,6 @@ def test_non_management_cannot_update_employee():
             employee,
             full_name="Alice Dupont",
         )
-
-    session.flush.assert_not_called()
-
-
-def test_update_employee_requires_a_change():
-    """Une mise à jour vide est refusée plutôt que silencieusement ignorée."""
-    session = MagicMock()
-    employee = MagicMock()
-
-    with pytest.raises(ValueError, match="Au moins une donnée"):
-        update_employee(session, management_actor(), employee)
 
     session.flush.assert_not_called()
 

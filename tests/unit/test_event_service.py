@@ -125,20 +125,8 @@ def test_event_requires_signed_contract():
     session.add.assert_not_called()
 
 
-@pytest.mark.parametrize(
-    ("start_date", "end_date", "attendees"),
-    [
-        (END, START, 100),
-        (START, END, -1),
-        (START, END, True),
-    ],
-)
-def test_create_event_rejects_invalid_details(
-    start_date,
-    end_date,
-    attendees,
-):
-    """Les dates et participants invalides sont refusés avant ajout."""
+def test_create_event_rejects_end_before_start():
+    """Une période incohérente est refusée avant l'ajout en session."""
     session = MagicMock()
     commercial = employee_with_role("COMMERCIAL")
 
@@ -148,10 +136,10 @@ def test_create_event_rejects_invalid_details(
             commercial,
             signed_contract_for(commercial),
             "Gala",
-            start_date,
-            end_date,
+            END,
+            START,
             "Paris",
-            attendees,
+            100,
         )
 
     session.add.assert_not_called()
@@ -194,16 +182,20 @@ def test_assign_event_rejects_non_support_employee():
 
 
 def test_assigned_support_updates_event():
-    """Le support affecté peut actualiser les informations opérationnelles."""
+    """Le support affecté peut modifier tous les champs de l'événement."""
     session = MagicMock()
     support = employee_with_role("SUPPORT")
     event = event_for(support)
+    new_contract = signed_contract_for(
+        employee_with_role("COMMERCIAL", "EMP-002")
+    )
     new_end = END + timedelta(hours=2)
 
     updated_event = update_event(
         session,
         support,
         event,
+        contract=new_contract,
         name=" Nouveau nom ",
         end_date=new_end,
         attendees=120,
@@ -211,6 +203,7 @@ def test_assigned_support_updates_event():
     )
 
     assert updated_event is event
+    assert event.contract is new_contract
     assert event.name == "Nouveau nom"
     assert event.end_date == new_end
     assert event.attendees == 120

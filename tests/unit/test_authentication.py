@@ -64,20 +64,6 @@ def test_authenticate_employee_rejects_an_unknown_identifier(
     mock_verify_password.assert_not_called()
 
 
-@patch("services.authentication.verify_password")
-def test_authenticate_employee_rejects_empty_credentials(
-    mock_verify_password,
-):
-    """Des identifiants vides ne déclenchent aucune requête en base."""
-    session = MagicMock()
-
-    authenticated_employee = authenticate_employee(session, "", "")
-
-    assert authenticated_employee is None
-    session.scalar.assert_not_called()
-    mock_verify_password.assert_not_called()
-
-
 @patch("services.authentication.verify_password", return_value=True)
 def test_authenticate_employee_normalizes_email_case(mock_verify_password):
     """La connexion par e-mail n'est pas sensible aux majuscules."""

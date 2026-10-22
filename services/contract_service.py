@@ -68,6 +68,7 @@ def update_contract(
     actor: Employee | None,
     contract: Contract,
     *,
+    client: Client | object = _UNSET,
     total_amount: object = _UNSET,
     remaining_amount: object = _UNSET,
     is_signed: bool | object = _UNSET,
@@ -79,7 +80,7 @@ def update_contract(
         )
     if all(
         value is _UNSET
-        for value in (total_amount, remaining_amount, is_signed)
+        for value in (client, total_amount, remaining_amount, is_signed)
     ):
         raise ValueError("Au moins une donnée doit être fournie.")
 
@@ -97,9 +98,13 @@ def update_contract(
     )
     if is_signed is not _UNSET and not isinstance(is_signed, bool):
         raise ValueError("Le statut de signature doit être un booléen.")
+    if client is not _UNSET and not isinstance(client, Client):
+        raise ValueError("Le client associé au contrat est invalide.")
 
     contract.total_amount = normalized_total
     contract.remaining_amount = normalized_remaining
+    if client is not _UNSET:
+        contract.client = client
     if is_signed is not _UNSET:
         contract.is_signed = is_signed
 

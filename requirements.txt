@@ -4,6 +4,8 @@ psycopg-binary==3.2.13
 PyJWT==2.15.1
 pytest==9.1.1
 python-dotenv==1.2.2
+rich==14.2.0
+sentry-sdk==2.72.0
 SQLAlchemy==2.0.54
 typing_extensions==4.13.2
 tzdata==2026.5

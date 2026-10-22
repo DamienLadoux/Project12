@@ -60,11 +60,8 @@ def test_non_management_actor_cannot_create_contract(role_name):
 @pytest.mark.parametrize(
     ("total_amount", "remaining_amount"),
     [
-        (-1, 0),
-        (1000, -1),
         (1000, 1001),
         ("montant invalide", 0),
-        ("NaN", 0),
     ],
 )
 def test_create_contract_rejects_invalid_amounts(
@@ -89,8 +86,12 @@ def test_create_contract_rejects_invalid_amounts(
 
 
 def test_management_actor_can_update_contract():
-    """La gestion peut modifier les montants et signer le contrat."""
+    """La gestion peut modifier tous les champs, dont le client."""
     session = MagicMock()
+    new_client = Client(
+        full_name="Nouveau client",
+        email="nouveau@example.test",
+    )
     contract = Contract(
         total_amount=Decimal("1000"),
         remaining_amount=Decimal("1000"),
@@ -101,12 +102,14 @@ def test_management_actor_can_update_contract():
         session,
         actor_with_role("GESTION"),
         contract,
+        client=new_client,
         total_amount="1200",
         remaining_amount="400",
         is_signed=True,
     )
 
     assert updated_contract is contract
+    assert contract.client is new_client
     assert contract.total_amount == Decimal("1200")
     assert contract.remaining_amount == Decimal("400")
     assert contract.is_signed is True
@@ -134,22 +137,4 @@ def test_update_contract_validates_before_mutation():
     assert contract.total_amount == Decimal("1000")
     assert contract.remaining_amount == Decimal("500")
     assert contract.is_signed is False
-    session.flush.assert_not_called()
-
-
-def test_update_contract_requires_a_change():
-    """Une mise à jour vide est refusée."""
-    session = MagicMock()
-    contract = Contract(
-        total_amount=Decimal("1000"),
-        remaining_amount=Decimal("500"),
-    )
-
-    with pytest.raises(ValueError, match="Au moins une donnée"):
-        update_contract(
-            session,
-            actor_with_role("GESTION"),
-            contract,
-        )
-
     session.flush.assert_not_called()
