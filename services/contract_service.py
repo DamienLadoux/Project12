@@ -5,7 +5,11 @@ from decimal import Decimal
 from sqlalchemy.orm import Session
 
 from models import Client, Contract, Employee
-from services.authorization import AuthorizationError, can_manage_contracts
+from services.authorization import (
+    AuthorizationError,
+    can_manage_contracts,
+    can_update_contract,
+)
 from services.validators import nonnegative_decimal
 
 _UNSET = object()
@@ -73,15 +77,20 @@ def update_contract(
     is_signed: bool | object = _UNSET,
 ) -> Contract:
     """Modifie les informations financières ou la signature d'un contrat."""
-    if not can_manage_contracts(actor):
-        raise AuthorizationError(
-            "Seul le département gestion peut modifier un contrat."
-        )
     if all(
         value is _UNSET
         for value in (client, total_amount, remaining_amount, is_signed)
     ):
         raise ValueError("Au moins une donnée doit être fournie.")
+    if client is not _UNSET and not isinstance(client, Client):
+        raise ValueError("Le client associé au contrat est invalide.")
+
+    target_client = None if client is _UNSET else client
+    if not can_update_contract(actor, contract, target_client):
+        raise AuthorizationError(
+            "La modification est réservée à la gestion ou au commercial "
+            "responsable du client."
+        )
 
     candidate_total = (
         contract.total_amount if total_amount is _UNSET else total_amount
@@ -97,8 +106,6 @@ def update_contract(
     )
     if is_signed is not _UNSET and not isinstance(is_signed, bool):
         raise ValueError("Le statut de signature doit être un booléen.")
-    if client is not _UNSET and not isinstance(client, Client):
-        raise ValueError("Le client associé au contrat est invalide.")
 
     contract.total_amount = normalized_total
     contract.remaining_amount = normalized_remaining

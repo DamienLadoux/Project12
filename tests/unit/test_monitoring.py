@@ -11,6 +11,8 @@ from monitoring import (
     capture_employee_updated,
     capture_login,
     configure_monitoring,
+    scrub_sentry_event,
+    trace_command,
 )
 
 
@@ -28,13 +30,48 @@ def test_monitoring_uses_environment_configuration(mock_init, monkeypatch):
     """Le DSN active Sentry sans collecte automatique de données privées."""
     monkeypatch.setenv("SENTRY_DSN", "https://public@example.test/1")
     monkeypatch.setenv("SENTRY_ENVIRONMENT", "test")
+    monkeypatch.setenv("SENTRY_RELEASE", "epic-events@test")
+    monkeypatch.setenv("SENTRY_TRACES_SAMPLE_RATE", "0.25")
 
     assert configure_monitoring() is True
     mock_init.assert_called_once_with(
         dsn="https://public@example.test/1",
+        before_send=scrub_sentry_event,
+        before_send_transaction=scrub_sentry_event,
         environment="test",
         include_local_variables=False,
+        release="epic-events@test",
         send_default_pii=False,
+        traces_sample_rate=0.25,
+    )
+
+
+def test_sentry_scrubber_removes_cli_arguments_only():
+    """Les valeurs métier passées en CLI ne quittent pas l'application."""
+    event = {
+        "extra": {
+            "sys.argv": ["clients", "create", "private@example.test"],
+            "safe_key": "safe-value",
+        },
+        "message": "test",
+    }
+
+    scrubbed_event = scrub_sentry_event(event)
+
+    assert scrubbed_event == {
+        "extra": {"safe_key": "safe-value"},
+        "message": "test",
+    }
+
+
+@patch("monitoring.sentry_sdk.start_transaction")
+def test_trace_command_names_cli_transaction(mock_start_transaction):
+    """Chaque commande reçoit un nom de transaction stable et lisible."""
+    trace_command("whoami")
+
+    mock_start_transaction.assert_called_once_with(
+        op="cli.command",
+        name="epicevents whoami",
     )
 
 

@@ -28,6 +28,7 @@ from monitoring import (
     capture_login,
     configure_monitoring,
     set_actor_context,
+    trace_command,
 )
 from security.tokens import (
     ExpiredAccessTokenError,
@@ -742,17 +743,18 @@ def main(argv: list[str] | None = None) -> int:
     arguments = build_parser().parse_args(argv)
 
     try:
-        if arguments.command == "login":
-            _run_login(arguments.identifier)
-        elif arguments.command == "logout":
-            if logout():
-                print_success("Déconnexion réussie.")
-            else:
-                print_info("Aucune session active.")
-        elif arguments.command == "whoami":
-            _run_whoami()
-        elif arguments.command not in AUTHENTICATION_COMMANDS:
-            _run_business_command(arguments)
+        with trace_command(arguments.command):
+            if arguments.command == "login":
+                _run_login(arguments.identifier)
+            elif arguments.command == "logout":
+                if logout():
+                    print_success("Déconnexion réussie.")
+                else:
+                    print_info("Aucune session active.")
+            elif arguments.command == "whoami":
+                _run_whoami()
+            elif arguments.command not in AUTHENTICATION_COMMANDS:
+                _run_business_command(arguments)
     except IntegrityError:
         print_error(
             "Les données sont en conflit avec une valeur existante "

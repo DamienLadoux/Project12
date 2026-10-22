@@ -166,6 +166,36 @@ def test_contract_creation_and_full_update_are_persisted(db_session):
     assert stored_contract.is_signed is True
 
 
+def test_commercial_updates_own_client_contract(db_session):
+    """Le commercial modifie le contrat rattaché à son propre client."""
+    manager = _employee(db_session, "GESTION", "MGR")
+    commercial = _employee(db_session, "COMMERCIAL", "COM")
+    client = _client(db_session, commercial, "commercial")
+    contract = create_contract(
+        db_session,
+        manager,
+        client,
+        "900.00",
+        "900.00",
+    )
+    contract_id = contract.id
+
+    update_contract(
+        db_session,
+        commercial,
+        contract,
+        remaining_amount="300.00",
+        is_signed=True,
+    )
+
+    db_session.expire_all()
+    stored_contract = db_session.get(Contract, contract_id)
+
+    assert stored_contract is not None
+    assert stored_contract.remaining_amount == Decimal("300.00")
+    assert stored_contract.is_signed is True
+
+
 def test_event_creation_and_full_update_are_persisted(db_session):
     """Les acteurs autorisés créent, affectent puis modifient l'événement."""
     manager = _employee(db_session, "GESTION", "MGR")

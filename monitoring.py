@@ -1,10 +1,28 @@
 """Configuration et événements de supervision envoyés à Sentry."""
 
 import os
+from typing import Any
 
 import sentry_sdk
 
 from models import Contract, Employee
+
+_SENSITIVE_EXTRA_KEYS = frozenset({"argv", "sys.argv", "sys_argv"})
+
+
+def scrub_sentry_event(
+    event: dict[str, Any],
+    hint: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Retire les arguments CLI, susceptibles de contenir des données CRM."""
+    del hint
+    extra = event.get("extra")
+    if isinstance(extra, dict):
+        for key in list(extra):
+            if str(key).lower() in _SENSITIVE_EXTRA_KEYS:
+                extra.pop(key, None)
+
+    return event
 
 
 def configure_monitoring() -> bool:
@@ -15,11 +33,25 @@ def configure_monitoring() -> bool:
 
     sentry_sdk.init(
         dsn=dsn,
+        before_send=scrub_sentry_event,
+        before_send_transaction=scrub_sentry_event,
         environment=os.getenv("SENTRY_ENVIRONMENT", "development"),
         include_local_variables=False,
+        release=os.getenv("SENTRY_RELEASE") or None,
         send_default_pii=False,
+        traces_sample_rate=float(
+            os.getenv("SENTRY_TRACES_SAMPLE_RATE", "1.0")
+        ),
     )
     return True
+
+
+def trace_command(command: str):
+    """Crée la transaction de performance d'une commande CLI."""
+    return sentry_sdk.start_transaction(
+        op="cli.command",
+        name=f"epicevents {command}",
+    )
 
 
 def set_actor_context(actor: Employee) -> None:

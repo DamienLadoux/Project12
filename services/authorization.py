@@ -36,7 +36,7 @@ def can_manage_employees(actor: Employee | None) -> bool:
 
 
 def can_manage_contracts(actor: Employee | None) -> bool:
-    """Indique si l'acteur peut créer et modifier les contrats."""
+    """Indique si l'acteur peut créer et administrer tous les contrats."""
     return has_role(actor, MANAGEMENT_ROLE)
 
 
@@ -60,6 +60,27 @@ def can_update_client(actor: Employee | None, client: Client) -> bool:
         and commercial_id is not None
         and actor_id == commercial_id
     )
+
+
+def can_update_contract(
+    actor: Employee | None,
+    contract: object,
+    new_client: Client | None = None,
+) -> bool:
+    """Autorise la gestion ou le commercial responsable du client.
+
+    Lors d'un changement de client, un commercial doit également être
+    responsable du nouveau client. La gestion conserve l'accès à tous les
+    contrats.
+    """
+    if can_manage_contracts(actor):
+        return True
+
+    current_client = getattr(contract, "client", None)
+    if current_client is None or not can_update_client(actor, current_client):
+        return False
+
+    return new_client is None or can_update_client(actor, new_client)
 
 
 def can_create_event(actor: Employee | None, contract: object) -> bool:

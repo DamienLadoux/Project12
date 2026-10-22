@@ -2,10 +2,35 @@
 
 Application CRM en ligne de commande utilisant PostgreSQL et SQLAlchemy.
 
+## Prérequis et installation
+
+- Python 3.10 ou une version ultérieure ;
+- PostgreSQL ;
+- Git.
+
+Cloner le dépôt, créer un environnement virtuel et installer les dépendances :
+
+```powershell
+git clone https://github.com/DamienLadoux/Project12.git
+cd Project12
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+```
+
+Sous Linux ou macOS, activer l'environnement avec
+`source .venv/bin/activate`.
+
 ## Configuration
 
 Créer un fichier `.env` à partir de `.env.example`, puis renseigner les
-paramètres PostgreSQL. Le fichier `.env` est ignoré par Git.
+paramètres PostgreSQL :
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Le fichier `.env` est ignoré par Git.
 
 Générer un secret JWT aléatoire :
 
@@ -17,18 +42,17 @@ Copier le résultat dans `JWT_SECRET`. Le secret doit contenir au moins 32
 octets et ne doit jamais être enregistré dans Git.
 
 La supervision Sentry est facultative en développement. Pour l'activer,
-renseigner `SENTRY_DSN` et, si nécessaire, `SENTRY_ENVIRONMENT` dans `.env`.
+renseigner `SENTRY_DSN` et, si nécessaire, `SENTRY_ENVIRONMENT`,
+`SENTRY_RELEASE` et `SENTRY_TRACES_SAMPLE_RATE` dans `.env`. Le taux de traces
+est compris entre `0.0` et `1.0`; `1.0` convient au développement, tandis que
+la production peut utiliser un taux plus faible selon le volume.
 L'application envoie les erreurs techniques non gérées ainsi que les
 événements d'audit suivants : connexions réussies, créations ou modifications
-de collaborateurs et signatures de contrat.
+de collaborateurs et signatures de contrat. Chaque commande CLI est également
+suivie comme une transaction de performance.
 Seuls les identifiants techniques et le rôle du collaborateur sont associés
-à ces événements ; les mots de passe et données personnelles sont exclus.
-
-Installer les dépendances :
-
-```powershell
-python -m pip install -r requirements.txt
-```
+à ces événements. Les mots de passe, les données personnelles et les
+arguments complets de la ligne de commande sont exclus avant envoi.
 
 ## Initialisation de PostgreSQL
 
@@ -56,6 +80,45 @@ sur la base et le schéma `public`. `bootstrap.py` crée les rôles `GESTION`,
 `COMMERCIAL` et `SUPPORT`, puis demande interactivement les informations du
 premier gestionnaire. Par sécurité, ce script refuse de créer un compte dès
 qu'un collaborateur existe déjà.
+
+## Données de démonstration
+
+Le script `seed_demo_data.py` crée un jeu cohérent permettant de tester les
+permissions, les filtres et les principaux parcours métier. Définir d'abord
+un mot de passe commun d'au moins 12 caractères dans le fichier `.env` :
+
+```dotenv
+DEMO_PASSWORD=un_mot_de_passe_local_a_remplacer
+```
+
+Si cette variable est absente, le script demande le mot de passe et sa
+confirmation sans les afficher dans le terminal.
+
+Créer ou remettre à zéro les enregistrements de démonstration :
+
+```powershell
+python seed_demo_data.py
+```
+
+Le script affiche le nom de la base cible et demande de saisir `DEMO` avant
+toute écriture. L'option `--yes` permet de supprimer cette confirmation dans
+un environnement local automatisé. Le script est idempotent : il peut être
+relancé sans créer de doublons et ne supprime pas les autres données.
+
+Les comptes disponibles utilisent tous la valeur de `DEMO_PASSWORD` :
+
+| Numéro | Département |
+| --- | --- |
+| `MGR-DEMO` | Gestion |
+| `COM-DEMO-1` | Commercial |
+| `COM-DEMO-2` | Commercial |
+| `SUP-DEMO-1` | Support |
+| `SUP-DEMO-2` | Support |
+
+Le jeu contient quatre clients, quatre contrats — non signé, signé avec solde
+et signé payé — ainsi que trois événements, dont un sans support affecté. Il
+permet notamment de démontrer les filtres `--mine`, `--unsigned`, `--unpaid`
+et `--without-support`.
 
 ## Interface en ligne de commande
 
@@ -181,7 +244,10 @@ python epicevents.py contracts create 1 --total 5000.00 --remaining 5000.00
 python epicevents.py contracts update 1 --client-id 2 --remaining 2500.00 --signed
 ```
 
-Seul le département gestion peut créer ou modifier un contrat.
+Seul le département gestion peut créer un contrat. La gestion peut modifier
+tous les contrats ; un commercial peut modifier uniquement les contrats des
+clients dont il est responsable. Il ne peut pas les rattacher au client d'un
+autre commercial.
 
 ### Événements
 
