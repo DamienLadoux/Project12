@@ -270,3 +270,8 @@ l'événement.
 Chaque commande métier s'exécute dans une transaction SQLAlchemy. En cas de
 succès, la transaction est validée ; en cas d'erreur, elle est annulée dans
 son ensemble.
+
+## Schéma de la base de données
+
+Le schéma relationnel de PostgreSQL est disponible dans
+[`docs/database_schema.png`](docs/database_schema.png).
