@@ -1,11 +1,16 @@
 """Configuration et événements de supervision envoyés à Sentry."""
 
+import logging
 import os
 from typing import Any
 
 import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 from models import Contract, Employee
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 _SENSITIVE_EXTRA_KEYS = frozenset({"argv", "sys.argv", "sys_argv"})
 
@@ -37,6 +42,14 @@ def configure_monitoring() -> bool:
         before_send_transaction=scrub_sentry_event,
         environment=os.getenv("SENTRY_ENVIRONMENT", "development"),
         include_local_variables=False,
+        integrations=[
+            LoggingIntegration(
+                capture_sentry_logs=True,
+                sentry_logs_level=logging.INFO,
+                level=logging.INFO,
+                event_level=logging.ERROR,
+            )
+        ],
         release=os.getenv("SENTRY_RELEASE") or None,
         send_default_pii=False,
         traces_sample_rate=float(
@@ -65,7 +78,14 @@ def capture_login(actor: Employee) -> None:
     set_actor_context(actor)
     with sentry_sdk.new_scope() as scope:
         scope.set_tag("audit.event", "employee.login")
-        sentry_sdk.capture_message("employee.login", level="info")
+        logger.info(
+            "employee.login",
+            extra={
+                "audit_event": "employee.login",
+                "employee_id": actor.id,
+                "employee_role": actor.role.name,
+            },
+        )
 
 
 def _capture_employee_event(
@@ -84,7 +104,14 @@ def _capture_employee_event(
                 "role": employee.role.name,
             },
         )
-        sentry_sdk.capture_message(event_name, level="info")
+        logger.info(
+            event_name,
+            extra={
+                "audit_event": event_name,
+                "employee_id": employee.id,
+                "employee_role": employee.role.name,
+            },
+        )
 
 
 def capture_employee_created(
@@ -118,4 +145,11 @@ def capture_contract_signature(
                 "client_id": contract.client_id,
             },
         )
-        sentry_sdk.capture_message("contract.signed", level="info")
+        logger.info(
+            "contract.signed",
+            extra={
+                "audit_event": "contract.signed",
+                "contract_id": contract.id,
+                "client_id": contract.client_id,
+            },
+        )

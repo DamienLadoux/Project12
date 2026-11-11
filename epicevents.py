@@ -3,7 +3,7 @@
 import argparse
 import getpass
 import os
-from datetime import date, datetime
+from datetime import date, datetime, time, timezone
 from typing import Any
 
 from dotenv import load_dotenv
@@ -103,27 +103,22 @@ def _nonnegative_integer(value: str) -> int:
 def _iso_date(value: str) -> date:
     """Convertit une date ISO fournie par argparse."""
     try:
-        return date.fromisoformat(value)
+        parsed_value = date.fromisoformat(value)
     except ValueError as error:
         raise argparse.ArgumentTypeError(
             "format attendu : AAAA-MM-JJ"
         ) from error
-
-
-def _iso_datetime(value: str) -> datetime:
-    """Convertit une date/heure ISO contenant obligatoirement un fuseau."""
-    try:
-        parsed_value = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as error:
+    if parsed_value.isoformat() != value:
         raise argparse.ArgumentTypeError(
-            "format ISO attendu, par exemple 2026-11-01T09:00:00+01:00"
-        ) from error
-
-    if parsed_value.tzinfo is None:
-        raise argparse.ArgumentTypeError(
-            "la date/heure doit contenir un fuseau, par exemple +01:00"
+            "format attendu : AAAA-MM-JJ"
         )
     return parsed_value
+
+
+def _event_date(value: str) -> datetime:
+    """Convertit une date CLI en minuit UTC pour le stockage des événements."""
+    parsed_date = _iso_date(value)
+    return datetime.combine(parsed_date, time.min, tzinfo=timezone.utc)
 
 
 def _add_authentication_commands(
@@ -303,8 +298,18 @@ def _add_event_commands(
     create_parser = actions.add_parser("create", help="créer un événement")
     create_parser.add_argument("contract_id", type=_positive_integer)
     create_parser.add_argument("--name", required=True)
-    create_parser.add_argument("--start", type=_iso_datetime, required=True)
-    create_parser.add_argument("--end", type=_iso_datetime, required=True)
+    create_parser.add_argument(
+        "--start",
+        type=_event_date,
+        required=True,
+        help="date de début au format AAAA-MM-JJ",
+    )
+    create_parser.add_argument(
+        "--end",
+        type=_event_date,
+        required=True,
+        help="date de fin au format AAAA-MM-JJ",
+    )
     create_parser.add_argument("--location", required=True)
     create_parser.add_argument(
         "--attendees",
@@ -323,12 +328,14 @@ def _add_event_commands(
     update_parser.add_argument("--name", default=argparse.SUPPRESS)
     update_parser.add_argument(
         "--start",
-        type=_iso_datetime,
+        type=_event_date,
+        help="date de début au format AAAA-MM-JJ",
         default=argparse.SUPPRESS,
     )
     update_parser.add_argument(
         "--end",
-        type=_iso_datetime,
+        type=_event_date,
+        help="date de fin au format AAAA-MM-JJ",
         default=argparse.SUPPRESS,
     )
     update_parser.add_argument("--location", default=argparse.SUPPRESS)

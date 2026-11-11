@@ -1,9 +1,11 @@
 """Tests unitaires de la supervision Sentry."""
 
+import logging
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 from monitoring import (
     capture_contract_signature,
@@ -34,16 +36,26 @@ def test_monitoring_uses_environment_configuration(mock_init, monkeypatch):
     monkeypatch.setenv("SENTRY_TRACES_SAMPLE_RATE", "0.25")
 
     assert configure_monitoring() is True
-    mock_init.assert_called_once_with(
-        dsn="https://public@example.test/1",
-        before_send=scrub_sentry_event,
-        before_send_transaction=scrub_sentry_event,
-        environment="test",
-        include_local_variables=False,
-        release="epic-events@test",
-        send_default_pii=False,
-        traces_sample_rate=0.25,
-    )
+    mock_init.assert_called_once()
+    options = dict(mock_init.call_args.kwargs)
+    integrations = options.pop("integrations")
+    assert len(integrations) == 1
+    integration = integrations[0]
+    assert isinstance(integration, LoggingIntegration)
+    assert integration._sentry_logs_handler.level == logging.INFO
+    assert integration._breadcrumb_handler.level == logging.INFO
+    assert integration._handler.level == logging.ERROR
+    assert LoggingIntegration.capture_sentry_logs is True
+    assert options == {
+        "dsn": "https://public@example.test/1",
+        "before_send": scrub_sentry_event,
+        "before_send_transaction": scrub_sentry_event,
+        "environment": "test",
+        "include_local_variables": False,
+        "release": "epic-events@test",
+        "send_default_pii": False,
+        "traces_sample_rate": 0.25,
+    }
 
 
 def test_sentry_scrubber_removes_cli_arguments_only():
@@ -75,7 +87,7 @@ def test_trace_command_names_cli_transaction(mock_start_transaction):
     )
 
 
-@patch("monitoring.sentry_sdk.capture_message")
+@patch("monitoring.logger.info")
 @patch("monitoring.sentry_sdk.new_scope")
 @patch("monitoring.sentry_sdk.set_tag")
 @patch("monitoring.sentry_sdk.set_user")
@@ -83,7 +95,7 @@ def test_login_event_contains_only_technical_identity(
     mock_set_user,
     mock_set_tag,
     mock_new_scope,
-    mock_capture_message,
+    mock_log_info,
 ):
     """L'audit d'une connexion n'envoie ni e-mail ni mot de passe."""
     actor = SimpleNamespace(
@@ -98,9 +110,13 @@ def test_login_event_contains_only_technical_identity(
     mock_set_user.assert_called_once_with({"id": "7"})
     mock_set_tag.assert_called_once_with("employee.role", "COMMERCIAL")
     scope.set_tag.assert_called_once_with("audit.event", "employee.login")
-    mock_capture_message.assert_called_once_with(
+    mock_log_info.assert_called_once_with(
         "employee.login",
-        level="info",
+        extra={
+            "audit_event": "employee.login",
+            "employee_id": 7,
+            "employee_role": "COMMERCIAL",
+        },
     )
 
 
@@ -133,8 +149,8 @@ def test_employee_write_event_contains_only_technical_data(
         patch("monitoring.sentry_sdk.set_tag") as mock_set_tag,
         patch("monitoring.sentry_sdk.new_scope") as mock_new_scope,
         patch(
-            "monitoring.sentry_sdk.capture_message"
-        ) as mock_capture_message,
+            "monitoring.logger.info"
+        ) as mock_log_info,
     ):
         scope = mock_new_scope.return_value.__enter__.return_value
 
@@ -147,10 +163,17 @@ def test_employee_write_event_contains_only_technical_data(
         "employee",
         {"id": 9, "role": "SUPPORT"},
     )
-    mock_capture_message.assert_called_once_with(event_name, level="info")
+    mock_log_info.assert_called_once_with(
+        event_name,
+        extra={
+            "audit_event": event_name,
+            "employee_id": 9,
+            "employee_role": "SUPPORT",
+        },
+    )
 
 
-@patch("monitoring.sentry_sdk.capture_message")
+@patch("monitoring.logger.info")
 @patch("monitoring.sentry_sdk.new_scope")
 @patch("monitoring.sentry_sdk.set_tag")
 @patch("monitoring.sentry_sdk.set_user")
@@ -158,7 +181,7 @@ def test_contract_signature_event_contains_entity_identifiers(
     mock_set_user,
     mock_set_tag,
     mock_new_scope,
-    mock_capture_message,
+    mock_log_info,
 ):
     """La signature expose les identifiants utiles au diagnostic."""
     actor = SimpleNamespace(
@@ -177,7 +200,11 @@ def test_contract_signature_event_contains_entity_identifiers(
         "contract",
         {"id": 11, "client_id": 5},
     )
-    mock_capture_message.assert_called_once_with(
+    mock_log_info.assert_called_once_with(
         "contract.signed",
-        level="info",
+        extra={
+            "audit_event": "contract.signed",
+            "contract_id": 11,
+            "client_id": 5,
+        },
     )

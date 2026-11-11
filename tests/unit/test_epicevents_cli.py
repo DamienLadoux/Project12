@@ -12,8 +12,8 @@ from epicevents import (
     EntityNotFoundError,
     _capture_audit_event,
     _dispatch_business_command,
+    _event_date,
     _iso_date,
-    _iso_datetime,
     _nonnegative_integer,
     _positive_integer,
     _run_business_command,
@@ -43,8 +43,9 @@ def test_parser_rejects_nonpositive_entity_identifier():
         (_nonnegative_integer, "invalid"),
         (_nonnegative_integer, "-1"),
         (_iso_date, "2026-99-99"),
-        (_iso_datetime, "invalid"),
-        (_iso_datetime, "2026-10-22T10:00:00"),
+        (_iso_date, "20261022"),
+        (_event_date, "invalid"),
+        (_event_date, "2026-10-22T10:00:00"),
     ],
 )
 def test_cli_value_validators_reject_invalid_input(validator, value):
@@ -58,11 +59,10 @@ def test_cli_value_validators_accept_boundary_values():
     assert _positive_integer("1") == 1
     assert _nonnegative_integer("0") == 0
     assert _iso_date("2026-10-22") == date(2026, 10, 22)
-    assert _iso_datetime("2026-10-22T10:00:00Z") == datetime(
+    assert _event_date("2026-10-22") == datetime(
         2026,
         10,
         22,
-        10,
         tzinfo=timezone.utc,
     )
 

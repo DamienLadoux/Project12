@@ -251,13 +251,13 @@ autre commercial.
 
 ### Événements
 
-Les dates utilisent le format ISO 8601 et doivent contenir un fuseau horaire.
+Les dates de début et de fin utilisent uniquement le format `AAAA-MM-JJ`.
 
 ```powershell
 python epicevents.py events list
 python epicevents.py events list --mine
 python epicevents.py events list --without-support
-python epicevents.py events create 1 --name "Gala" --start "2026-11-01T09:00:00+01:00" --end "2026-11-01T18:00:00+01:00" --location "Paris" --attendees 150
+python epicevents.py events create 1 --name "Gala" --start 2026-11-01 --end 2026-11-01 --location "Paris" --attendees 150
 python epicevents.py events update 1 --contract-id 2 --attendees 175 --notes "Accueil à 8 h 30"
 python epicevents.py events assign-support 1 --support-id 4
 python epicevents.py events assign-support 1 --clear
